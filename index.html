@@ -1,448 +1,248 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>📸 Captura e Processamento de Imagens</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-
-        .container {
-            background: white;
-            border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-            padding: 40px;
-            max-width: 1200px;
-            width: 100%;
-        }
-
-        h1 {
-            text-align: center;
-            color: #667eea;
-            margin-bottom: 10px;
-            font-size: 2.5em;
-        }
-
-        .subtitle {
-            text-align: center;
-            color: #666;
-            margin-bottom: 30px;
-            font-size: 1.1em;
-        }
-
-        .camera-section {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 20px;
-            margin-bottom: 30px;
-        }
-
-        #video {
-            width: 100%;
-            max-width: 640px;
-            border: 4px solid #667eea;
-            border-radius: 15px;
-            display: none;
-        }
-
-        #canvas {
-            display: none;
-        }
-
-        .controls {
-            display: flex;
-            gap: 15px;
-            flex-wrap: wrap;
-            justify-content: center;
-        }
-
-        button {
-            padding: 15px 30px;
-            font-size: 16px;
-            font-weight: bold;
-            border: none;
-            border-radius: 10px;
-            cursor: pointer;
-            transition: all 0.3s;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-        }
-
-        button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
-        }
-
-        #startBtn {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-        }
-
-        #captureBtn {
-            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-            color: white;
-            display: none;
-        }
-
-        #restartBtn {
-            background: linear-gradient(135deg, #43cea2 0%, #185a9d 100%);
-            color: white;
-            display: none;
-        }
-
-        .size-selector {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            background: #f5f5f5;
-            padding: 15px;
-            border-radius: 10px;
-        }
-
-        .size-selector label {
-            font-weight: bold;
-            color: #333;
-        }
-
-        .size-selector input {
-            width: 80px;
-            padding: 8px;
-            border: 2px solid #667eea;
-            border-radius: 5px;
-            font-size: 14px;
-        }
-
-        #countdown {
-            font-size: 72px;
-            font-weight: bold;
-            color: #f5576c;
-            display: none;
-            animation: pulse 1s infinite;
-        }
-
-        @keyframes pulse {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.1); }
-        }
-
-        .results-section {
-            display: none;
-            margin-top: 30px;
-            padding-top: 30px;
-            border-top: 2px solid #eee;
-        }
-
-        .images-container {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 20px;
-            margin-top: 20px;
-        }
-
-        .image-box {
-            background: #f9f9f9;
-            padding: 20px;
-            border-radius: 15px;
-            text-align: center;
-        }
-
-        .image-box h3 {
-            color: #667eea;
-            margin-bottom: 15px;
-        }
-
-        .image-box img {
-            width: 100%;
-            border-radius: 10px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-        }
-
-        .metadata {
-            background: #f5f5f5;
-            padding: 20px;
-            border-radius: 10px;
-            margin-top: 20px;
-        }
-
-        .metadata h3 {
-            color: #667eea;
-            margin-bottom: 15px;
-        }
-
-        .metadata-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-        }
-
-        .metadata-item {
-            background: white;
-            padding: 15px;
-            border-radius: 8px;
-            border-left: 4px solid #667eea;
-        }
-
-        .metadata-label {
-            font-weight: bold;
-            color: #666;
-            font-size: 0.9em;
-        }
-
-        .metadata-value {
-            font-size: 1.2em;
-            color: #333;
-            margin-top: 5px;
-        }
-
-        .status {
-            text-align: center;
-            padding: 15px;
-            border-radius: 10px;
-            margin-top: 20px;
-            font-weight: bold;
-            display: none;
-        }
-
-        .status.success {
-            background: #d4edda;
-            color: #155724;
-            border: 2px solid #c3e6cb;
-        }
-
-        .status.error {
-            background: #f8d7da;
-            color: #721c24;
-            border: 2px solid #f5c6cb;
-        }
-
-        .status.info {
-            background: #d1ecf1;
-            color: #0c5460;
-            border: 2px solid #bee5eb;
-        }
-
-        .loader {
-            border: 5px solid #f3f3f3;
-            border-top: 5px solid #667eea;
-            border-radius: 50%;
-            width: 50px;
-            height: 50px;
-            animation: spin 1s linear infinite;
-            margin: 20px auto;
-            display: none;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>📸 Captura e Processamento de Imagens</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh; padding: 20px; display: flex; flex-direction: column; align-items: center;
+    }
+    .container { background: #fff; border-radius: 20px; box-shadow: 0 20px 60px rgba(0,0,0,.3); padding: 40px; max-width: 1200px; width: 100%; }
+    h1 { text-align: center; color: #667eea; margin-bottom: 10px; font-size: 2.5em; }
+    .subtitle { text-align: center; color: #666; margin-bottom: 30px; font-size: 1.1em; }
+    .camera-section { display: flex; flex-direction: column; align-items: center; gap: 20px; margin-bottom: 30px; }
+    #video { width: 100%; max-width: 640px; border: 4px solid #667eea; border-radius: 15px; display: none; }
+    #canvas { display: none; }
+    .controls { display: flex; gap: 15px; flex-wrap: wrap; justify-content: center; }
+    button { padding: 15px 30px; font-size: 16px; font-weight: bold; border: none; border-radius: 10px; cursor: pointer; transition: all .3s; box-shadow: 0 4px 15px rgba(0,0,0,.2); }
+    button:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,.3); }
+    #startBtn { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #fff; }
+    #captureBtn { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: #fff; display: none; }
+    #restartBtn { background: linear-gradient(135deg, #43cea2 0%, #185a9d 100%); color: #fff; display: none; }
+    .size-selector { display: flex; align-items: center; gap: 10px; background: #f5f5f5; padding: 15px; border-radius: 10px; }
+    .size-selector label { font-weight: bold; color: #333; }
+    .size-selector input { width: 80px; padding: 8px; border: 2px solid #667eea; border-radius: 5px; font-size: 14px; }
+    #countdown { font-size: 72px; font-weight: bold; color: #f5576c; display: none; animation: pulse 1s infinite; }
+    @keyframes pulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.1)} }
+    .results-section { display: none; margin-top: 30px; padding-top: 30px; border-top: 2px solid #eee; }
+    .images-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-top: 20px; }
+    .image-box { background: #f9f9f9; padding: 20px; border-radius: 15px; text-align: center; }
+    .image-box h3 { color: #667eea; margin-bottom: 15px; }
+    .image-box img { width: 100%; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,.1); }
+    .metadata { background: #f5f5f5; padding: 20px; border-radius: 10px; margin-top: 20px; }
+    .metadata h3 { color: #667eea; margin-bottom: 15px; }
+    .metadata-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; }
+    .metadata-item { background: #fff; padding: 15px; border-radius: 8px; border-left: 4px solid #667eea; }
+    .metadata-label { font-weight: bold; color: #666; font-size: .9em; }
+    .metadata-value { font-size: 1.2em; color: #333; margin-top: 5px; }
+    .status { text-align: center; padding: 15px; border-radius: 10px; margin-top: 20px; font-weight: bold; display: none; }
+    .status.success { background: #d4edda; color: #155724; border: 2px solid #c3e6cb; }
+    .status.error { background: #f8d7da; color: #721c24; border: 2px solid #f5c6cb; }
+    .status.info { background: #d1ecf1; color: #0c5460; border: 2px solid #bee5eb; }
+    .loader { border: 5px solid #f3f3f3; border-top: 5px solid #667eea; border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; margin: 20px auto; display: none; }
+    @keyframes spin { 0%{transform:rotate(0)} 100%{transform:rotate(360deg)} }
+  </style>
 </head>
 <body>
-    <div class="container">
-        <h1>📸 Captura e Processamento de Imagens</h1>
-        <p class="subtitle">Sistema de captura com processamento em tempo real</p>
+  <div class="container">
+    <h1>📸 Captura e Processamento de Imagens</h1>
+    <p class="subtitle">Sistema de captura com processamento em tempo real</p>
 
-        <div class="camera-section">
-            <video id="video" autoplay></video>
-            <canvas id="canvas"></canvas>
-            <div id="countdown"></div>
+    <div class="camera-section">
+      <!-- playsinline + muted para mobile -->
+      <video id="video" autoplay playsinline muted></video>
+      <canvas id="canvas"></canvas>
+      <div id="countdown"></div>
 
-            <div class="controls">
-                <button id="startBtn">🎥 Iniciar Câmera</button>
-                <button id="captureBtn">📸 Capturar Foto (ou ENTER)</button>
-                <button id="restartBtn">🔄 Reiniciar</button>
-                
-                <div class="size-selector">
-                    <label>Tamanho:</label>
-                    <input type="number" id="width" value="64" min="16" max="512">
-                    <span>x</span>
-                    <input type="number" id="height" value="64" min="16" max="512">
-                    <span>pixels</span>
-                </div>
-            </div>
+      <div class="controls">
+        <button id="startBtn">🎥 Iniciar Câmera</button>
+        <button id="captureBtn">📸 Capturar Foto (ou ENTER)</button>
+        <button id="restartBtn">🔄 Reiniciar</button>
+
+        <div class="size-selector">
+          <label>Tamanho:</label>
+          <input type="number" id="width" value="64" min="16" max="512" />
+          <span>x</span>
+          <input type="number" id="height" value="64" min="16" max="512" />
+          <span>pixels</span>
         </div>
-
-        <div class="loader" id="loader"></div>
-        <div class="status" id="status"></div>
-
-        <div class="results-section" id="results">
-            <h2 style="text-align: center; color: #667eea;">📊 Resultados do Processamento</h2>
-            
-            <div class="images-container">
-                <div class="image-box">
-                    <h3>🖼️ Imagem Original</h3>
-                    <img id="originalImage" src="" alt="Original">
-                </div>
-                <div class="image-box">
-                    <h3>✨ Imagem Processada</h3>
-                    <img id="processedImage" src="" alt="Processada">
-                </div>
-            </div>
-
-            <div class="metadata">
-                <h3>📋 Metadados</h3>
-                <div class="metadata-grid">
-                    <div class="metadata-item">
-                        <div class="metadata-label">Dimensão Original</div>
-                        <div class="metadata-value" id="dimOriginal">-</div>
-                    </div>
-                    <div class="metadata-item">
-                        <div class="metadata-label">Dimensão Processada</div>
-                        <div class="metadata-value" id="dimProcessada">-</div>
-                    </div>
-                    <div class="metadata-item">
-                        <div class="metadata-label">Valor Máximo</div>
-                        <div class="metadata-value" id="valorMax">-</div>
-                    </div>
-                    <div class="metadata-item">
-                        <div class="metadata-label">Valor Mínimo</div>
-                        <div class="metadata-value" id="valorMin">-</div>
-                    </div>
-                    <div class="metadata-item">
-                        <div class="metadata-label">Arquivo Salvo</div>
-                        <div class="metadata-value" id="arquivoSalvo">-</div>
-                    </div>
-                </div>
-            </div>
-        </div>
+      </div>
     </div>
 
-    <script>
-        const video = document.getElementById('video');
-        const canvas = document.getElementById('canvas');
-        const ctx = canvas.getContext('2d');
-        const startBtn = document.getElementById('startBtn');
-        const captureBtn = document.getElementById('captureBtn');
-        const restartBtn = document.getElementById('restartBtn');
-        const countdown = document.getElementById('countdown');
-        const loader = document.getElementById('loader');
-        const status = document.getElementById('status');
-        const results = document.getElementById('results');
-        
-        let stream = null;
-        const API_URL = location.hostname.endsWith('github.io');  
-            ? 'https://projeto-camera.onrender.com'   // <- coloque a URL do Render aqui
-            : 'http://localhost:8080';
+    <div class="loader" id="loader"></div>
+    <div class="status" id="status"></div>
 
-        startBtn.addEventListener('click', iniciarCamera);
-        captureBtn.addEventListener('click', capturarFoto);
-        restartBtn.addEventListener('click', reiniciarCiclo);
+    <div class="results-section" id="results">
+      <h2 style="text-align:center;color:#667eea;">📊 Resultados do Processamento</h2>
+      <div class="images-container">
+        <div class="image-box">
+          <h3>🖼️ Imagem Original</h3>
+          <img id="originalImage" src="" alt="Original" />
+        </div>
+        <div class="image-box">
+          <h3>✨ Imagem Processada</h3>
+          <img id="processedImage" src="" alt="Processada" />
+        </div>
+      </div>
 
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' && captureBtn.style.display !== 'none') {
-                capturarFoto();
-            }
+      <div class="metadata">
+        <h3>📋 Metadados</h3>
+        <div class="metadata-grid">
+          <div class="metadata-item">
+            <div class="metadata-label">Dimensão Original</div>
+            <div class="metadata-value" id="dimOriginal">-</div>
+          </div>
+          <div class="metadata-item">
+            <div class="metadata-label">Dimensão Processada</div>
+            <div class="metadata-value" id="dimProcessada">-</div>
+          </div>
+          <div class="metadata-item">
+            <div class="metadata-label">Valor Máximo</div>
+            <div class="metadata-value" id="valorMax">-</div>
+          </div>
+          <div class="metadata-item">
+            <div class="metadata-label">Valor Mínimo</div>
+            <div class="metadata-value" id="valorMin">-</div>
+          </div>
+          <div class="metadata-item">
+            <div class="metadata-label">Arquivo Salvo</div>
+            <div class="metadata-value" id="arquivoSalvo">-</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const startBtn = document.getElementById('startBtn');
+    const captureBtn = document.getElementById('captureBtn');
+    const restartBtn = document.getElementById('restartBtn');
+    const countdown = document.getElementById('countdown');
+    const loader = document.getElementById('loader');
+    const status = document.getElementById('status');
+    const results = document.getElementById('results');
+
+    let stream = null;
+
+    // ✅ CORRIGIDO: sem ponto-e-vírgula antes do '?'
+    const API_URL = location.hostname.endsWith('github.io')
+      ? 'https://projeto-camera.onrender.com'   // troque para a URL do seu Render/Railway
+      : 'http://localhost:8080';
+
+    startBtn.addEventListener('click', iniciarCamera);
+    captureBtn.addEventListener('click', capturarFoto);
+    restartBtn.addEventListener('click', reiniciarCiclo);
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && captureBtn.style.display !== 'none') {
+        capturarFoto();
+      }
+    });
+
+    async function iniciarCamera() {
+      try {
+        // Melhor compatibilidade em mobile
+        const constraints = { video: { facingMode: { ideal: 'user' } }, audio: false };
+        try {
+          stream = await navigator.mediaDevices.getUserMedia(constraints);
+        } catch {
+          stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+        }
+
+        video.srcObject = stream;
+        video.setAttribute('playsinline', 'true');
+        video.muted = true;
+        await video.play();
+
+        video.style.display = 'block';
+        startBtn.style.display = 'none';
+        captureBtn.style.display = 'inline-block';
+        showStatus('Câmera iniciada! Clique em "Capturar Foto" ou pressione ENTER', 'success');
+      } catch (error) {
+        showStatus('Erro ao acessar câmera: ' + (error.message || error.name), 'error');
+      }
+    }
+
+    async function capturarFoto() {
+      captureBtn.disabled = true;
+      countdown.style.display = 'block';
+      for (let i = 3; i > 0; i--) { countdown.textContent = i; await sleep(1000); }
+      countdown.textContent = '📸'; await sleep(500); countdown.style.display = 'none';
+
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      ctx.drawImage(video, 0, 0);
+
+      const imagemBase64 = canvas.toDataURL('image/jpeg', 0.9);
+      if (stream) stream.getTracks().forEach(t => t.stop());
+      video.style.display = 'none';
+      captureBtn.style.display = 'none';
+
+      await enviarParaBackend(imagemBase64);
+      captureBtn.disabled = false;
+    }
+
+    async function enviarParaBackend(imagemBase64) {
+      loader.style.display = 'block';
+      showStatus('Processando imagem...', 'info');
+      try {
+        const width = parseInt(document.getElementById('width').value);
+        const height = parseInt(document.getElementById('height').value);
+
+        const response = await fetch(`${API_URL}/api/processar-foto`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ imagem: imagemBase64, tamanho: [height, width] })
         });
 
-        async function iniciarCamera() {
-            try {
-                stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
-                video.srcObject = stream;
-                video.style.display = 'block';
-                startBtn.style.display = 'none';
-                captureBtn.style.display = 'inline-block';
-                showStatus('Câmera iniciada! Clique em "Capturar Foto" ou pressione ENTER', 'success');
-            } catch (error) {
-                showStatus('Erro ao acessar câmera: ' + error.message, 'error');
-            }
+        const data = await response.json();
+        if (response.ok) {
+          mostrarResultados(imagemBase64, data);
+          showStatus('✅ Foto processada com sucesso!', 'success');
+        } else {
+          showStatus('Erro: ' + (data.erro || 'Falha no processamento'), 'error');
         }
+      } catch (error) {
+        showStatus('Erro ao conectar com o backend: ' + (error.message || error), 'error');
+      } finally {
+        loader.style.display = 'none';
+      }
+    }
 
-        async function capturarFoto() {
-            captureBtn.disabled = true;
-            countdown.style.display = 'block';
-            for (let i = 3; i > 0; i--) {
-                countdown.textContent = i;
-                await sleep(1000);
-            }
-            countdown.textContent = '📸';
-            await sleep(500);
-            countdown.style.display = 'none';
+    function mostrarResultados(imagemOriginal, dados) {
+      document.getElementById('originalImage').src = imagemOriginal;
+      document.getElementById('processedImage').src = 'data:image/png;base64,' + dados.imagem_processada_base64;
+      document.getElementById('dimOriginal').textContent = `${dados.dimensao_original[0]} x ${dados.dimensao_original[1]}`;
+      document.getElementById('dimProcessada').textContent = `${dados.dimensao_processada[0]} x ${dados.dimensao_processada[1]}`;
+      document.getElementById('valorMax').textContent = dados.valor_max.toFixed(2);
+      document.getElementById('valorMin').textContent = dados.valor_min.toFixed(2);
+      document.getElementById('arquivoSalvo').textContent = dados.arquivo_salvo;
+      results.style.display = 'block';
+      restartBtn.style.display = 'inline-block';
+      results.scrollIntoView({ behavior: 'smooth' });
+    }
 
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            ctx.drawImage(video, 0, 0);
+    async function reiniciarCiclo() {
+      results.style.display = 'none';
+      status.style.display = 'none';
+      restartBtn.style.display = 'none';
+      await iniciarCamera();
+    }
 
-            const imagemBase64 = canvas.toDataURL('image/jpeg', 0.9);
-            if (stream) stream.getTracks().forEach(track => track.stop());
-            video.style.display = 'none';
-            captureBtn.style.display = 'none';
+    function showStatus(message, type) {
+      status.textContent = message;
+      status.className = 'status ' + type;
+      status.style.display = 'block';
+    }
 
-            await enviarParaBackend(imagemBase64);
-            captureBtn.disabled = false;
-        }
-
-        async function enviarParaBackend(imagemBase64) {
-            loader.style.display = 'block';
-            showStatus('Processando imagem...', 'info');
-
-            try {
-                const width = parseInt(document.getElementById('width').value);
-                const height = parseInt(document.getElementById('height').value);
-
-                const response = await fetch(`${API_URL}/api/processar-foto`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ imagem: imagemBase64, tamanho: [height, width] })
-                });
-
-                const data = await response.json();
-                if (response.ok) {
-                    mostrarResultados(imagemBase64, data);
-                    showStatus('✅ Foto processada com sucesso!', 'success');
-                } else {
-                    showStatus('Erro: ' + data.erro, 'error');
-                }
-            } catch (error) {
-                showStatus('Erro ao conectar com o backend: ' + error.message, 'error');
-            } finally {
-                loader.style.display = 'none';
-            }
-        }
-
-        function mostrarResultados(imagemOriginal, dados) {
-            document.getElementById('originalImage').src = imagemOriginal;
-            document.getElementById('processedImage').src = 'data:image/png;base64,' + dados.imagem_processada_base64;
-            document.getElementById('dimOriginal').textContent = `${dados.dimensao_original[0]} x ${dados.dimensao_original[1]}`;
-            document.getElementById('dimProcessada').textContent = `${dados.dimensao_processada[0]} x ${dados.dimensao_processada[1]}`;
-            document.getElementById('valorMax').textContent = dados.valor_max.toFixed(2);
-            document.getElementById('valorMin').textContent = dados.valor_min.toFixed(2);
-            document.getElementById('arquivoSalvo').textContent = dados.arquivo_salvo;
-            results.style.display = 'block';
-            restartBtn.style.display = 'inline-block';
-            results.scrollIntoView({ behavior: 'smooth' });
-        }
-
-        async function reiniciarCiclo() {
-            results.style.display = 'none';
-            status.style.display = 'none';
-            restartBtn.style.display = 'none';
-            await iniciarCamera();
-        }
-
-        function showStatus(message, type) {
-            status.textContent = message;
-            status.className = 'status ' + type;
-            status.style.display = 'block';
-        }
-
-        function sleep(ms) {
-            return new Promise(resolve => setTimeout(resolve, ms));
-        }
-    </script>
+    function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+  </script>
 </body>
 </html>
