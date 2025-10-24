@@ -223,6 +223,11 @@
       document.getElementById('dimProcessada').textContent = `${dados.dimensao_processada[0]} x ${dados.dimensao_processada[1]}`;
       document.getElementById('valorMax').textContent = dados.valor_max.toFixed(2);
       document.getElementById('valorMin').textContent = dados.valor_min.toFixed(2);
+      document.getElementById('arquivoSalvo').innerHTML =
+      document.getElementById('arquivoSalvo').innerHTML =
+        dados.arquivo_salvo_url
+          ? `<a href="${dados.arquivo_salvo_url}" target="_blank" rel="noopener">${dados.arquivo_salvo}</a>`
+          : dados.arquivo_salvo;      
       document.getElementById('arquivoSalvo').textContent = dados.arquivo_salvo;
       results.style.display = 'block';
       restartBtn.style.display = 'inline-block';
