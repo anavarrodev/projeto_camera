@@ -6,34 +6,165 @@
   <title>📸 Captura e Processamento de Imagens</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: system-ui,-apple-system,Segoe UI,Roboto,Ubuntu; background: linear-gradient(135deg,#667eea 0%,#764ba2 100%); min-height: 100vh; padding: 20px; display: flex; align-items: center; flex-direction: column; }
-    .container { background: #fff; border-radius: 20px; box-shadow: 0 20px 60px rgba(0,0,0,.3); padding: 40px; max-width: 1200px; width: 100%; }
-    h1 { text-align: center; color: #667eea; margin-bottom: 10px; font-size: 2.2rem; }
-    .subtitle { text-align: center; color: #666; margin-bottom: 30px; }
-    .camera-section { display: flex; flex-direction: column; align-items: center; gap: 20px; margin-bottom: 30px; }
-    #video { width: 100%; max-width: 640px; border: 4px solid #667eea; border-radius: 15px; display: none; }
+    body {
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .container {
+      background: #fff;
+      border-radius: 20px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      padding: 40px;
+      max-width: 1200px;
+      width: 100%;
+    }
+    h1 {
+      text-align: center;
+      color: #667eea;
+      margin-bottom: 10px;
+      font-size: 2.2rem;
+    }
+    .subtitle {
+      text-align: center;
+      color: #666;
+      margin-bottom: 30px;
+    }
+    .camera-section {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+      margin-bottom: 30px;
+    }
+    #video {
+      width: 100%;
+      max-width: 640px;
+      border: 4px solid #667eea;
+      border-radius: 15px;
+      display: none;
+    }
     #canvas { display: none; }
-    .controls { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
-    button { padding: 14px 24px; font-weight: 600; border: 0; border-radius: 10px; cursor: pointer; box-shadow: 0 4px 14px rgba(0,0,0,.2); }
-    #startBtn { background: linear-gradient(135deg,#667eea,#764ba2); color: #fff; }
-    #captureBtn { background: linear-gradient(135deg,#f093fb,#f5576c); color: #fff; display: none; }
-    #restartBtn { background: linear-gradient(135deg,#43cea2,#185a9d); color: #fff; display: none; }
-    .size-selector { display: flex; align-items: center; gap: 10px; background: #f5f5f5; padding: 12px; border-radius: 10px; }
-    .size-selector input { width: 80px; padding: 6px 8px; border: 2px solid #667eea; border-radius: 6px; }
-    #countdown { font-size: 64px; font-weight: 700; color: #f5576c; display: none; }
-    .results-section { display: none; margin-top: 30px; border-top: 2px solid #eee; padding-top: 30px; }
-    .images-container { display: grid; grid-template-columns: repeat(auto-fit,minmax(280px,1fr)); gap: 16px; }
-    .image-box { background: #f9f9f9; padding: 16px; border-radius: 12px; text-align: center; }
-    .image-box img { border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
-    .metadata { background: #f5f5f5; padding: 16px; border-radius: 10px; margin-top: 16px; }
-    .metadata-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(200px,1fr)); gap: 12px; }
-    .metadata-item { background: #fff; padding: 12px; border-radius: 8px; border-left: 4px solid #667eea; }
-    .status { text-align: center; padding: 12px; border-radius: 10px; font-weight: 600; display: none; margin-top: 10px; }
-    .status.success { background:#d4edda; color:#155724; border:2px solid #c3e6cb; }
-    .status.error { background:#f8d7da; color:#721c24; border:2px solid #f5c6cb; }
-    .status.info { background:#d1ecf1; color:#0c5460; border:2px solid #bee5eb; }
-    .loader { border:5px solid #f3f3f3; border-top:5px solid #667eea; border-radius:50%; width:50px; height:50px; animation:spin 1s linear infinite; margin:20px auto; display:none; }
-    @keyframes spin { 0%{transform:rotate(0)} 100%{transform:rotate(360deg)} }
+
+    .controls {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    button {
+      padding: 14px 24px;
+      font-weight: 600;
+      border: 0;
+      border-radius: 10px;
+      cursor: pointer;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
+    }
+    #startBtn { background: linear-gradient(135deg, #667eea, #764ba2); color: #fff; }
+    #captureBtn { background: linear-gradient(135deg, #f093fb, #f5576c); color: #fff; display: none; }
+    #restartBtn { background: linear-gradient(135deg, #43cea2, #185a9d); color: #fff; display: none; }
+
+    .size-selector {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: #f5f5f5;
+      padding: 12px;
+      border-radius: 10px;
+    }
+    .size-selector input {
+      width: 80px;
+      padding: 6px 8px;
+      border: 2px solid #667eea;
+      border-radius: 6px;
+    }
+
+    #countdown {
+      font-size: 64px;
+      font-weight: 700;
+      color: #f5576c;
+      display: none;
+    }
+
+    /* 🔧 Área dos resultados */
+    .results-section {
+      display: none;
+      margin-top: 30px;
+      border-top: 2px solid #eee;
+      padding-top: 30px;
+    }
+    .images-container {
+      display: flex;
+      justify-content: center;
+      gap: 24px;
+      flex-wrap: wrap;
+    }
+    .image-box {
+      background: #f9f9f9;
+      padding: 16px;
+      border-radius: 12px;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    /* ✅ Tamanho fixo igual para ambas as imagens */
+    .image-box img {
+      width: 512px;
+      height: 512px;
+      object-fit: contain;  /* ← CORRIGIDO: mostra imagem completa */
+      border-radius: 12px;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+      background: #000;
+      image-rendering: pixelated;  /* ← Mantém pixels visíveis em imagens pequenas */
+    }
+
+    .metadata {
+      background: #f5f5f5;
+      padding: 16px;
+      border-radius: 10px;
+      margin-top: 16px;
+    }
+    .metadata-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 12px;
+    }
+    .metadata-item {
+      background: #fff;
+      padding: 12px;
+      border-radius: 8px;
+      border-left: 4px solid #667eea;
+    }
+
+    .status {
+      text-align: center;
+      padding: 12px;
+      border-radius: 10px;
+      font-weight: 600;
+      display: none;
+      margin-top: 10px;
+    }
+    .status.success { background: #d4edda; color: #155724; border: 2px solid #c3e6cb; }
+    .status.error { background: #f8d7da; color: #721c24; border: 2px solid #f5c6cb; }
+    .status.info { background: #d1ecf1; color: #0c5460; border: 2px solid #bee5eb; }
+
+    .loader {
+      border: 5px solid #f3f3f3;
+      border-top: 5px solid #667eea;
+      border-radius: 50%;
+      width: 50px;
+      height: 50px;
+      animation: spin 1s linear infinite;
+      margin: 20px auto;
+      display: none;
+    }
+    @keyframes spin { 0% { transform: rotate(0); } 100% { transform: rotate(360deg); } }
   </style>
 </head>
 <body>
@@ -70,12 +201,11 @@
       <div class="images-container">
         <div class="image-box">
           <h3>🖼️ Imagem Original</h3>
-          <img id="originalImage" src="" alt="Original" style="width:100%; max-width:640px;" />
+          <img id="originalImage" src="" alt="Original" />
         </div>
         <div class="image-box">
           <h3>✨ Imagem Processada</h3>
-          <!-- ✅ Imagem processada agora no mesmo tamanho da original -->
-          <img id="processedImage" src="" alt="Processada" style="width:100%; max-width:640px; object-fit:contain; background:#000; border-radius:10px;" />
+          <img id="processedImage" src="" alt="Processada" />
         </div>
       </div>
 
@@ -213,6 +343,7 @@
       status.className = 'status ' + type;
       status.style.display = 'block';
     }
+
     const sleep = (ms) => new Promise(r => setTimeout(r, ms));
   </script>
 </body>
