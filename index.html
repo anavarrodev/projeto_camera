@@ -113,11 +113,11 @@
       align-items: center;
     }
 
-    /* ✅ Responsivo: 420×420 desktop, 150×150 mobile */
+    /* ✅ Responsivo: 420×420 desktop, 150×150 mobile - SEM BORDAS PRETAS */
     .image-box img {
       width: 150px;
       height: 150px;
-      object-fit: contain;
+      object-fit: cover;  /* ← CORRIGIDO: remove bordas pretas */
       border-radius: 12px;
       box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
       background: #000;
@@ -228,11 +228,26 @@
       <div class="metadata">
         <h3>📋 Metadados</h3>
         <div class="metadata-grid">
-          <div class="metadata-item"><div>Dimensão Original</div><div id="dimOriginal">-</div></div>
-          <div class="metadata-item"><div>Dimensão Processada</div><div id="dimProcessada">-</div></div>
-          <div class="metadata-item"><div>Valor Máximo</div><div id="valorMax">-</div></div>
-          <div class="metadata-item"><div>Valor Mínimo</div><div id="valorMin">-</div></div>
-          <div class="metadata-item"><div>Arquivo Salvo</div><div id="arquivoSalvo">-</div></div>
+          <div class="metadata-item">
+            <div style="font-weight: bold; color: #666; font-size: 0.9em;">Dimensão Original</div>
+            <div id="dimOriginal" style="font-size: 1.2em; color: #333; margin-top: 5px;">-</div>
+          </div>
+          <div class="metadata-item">
+            <div style="font-weight: bold; color: #666; font-size: 0.9em;">Dimensão Processada</div>
+            <div id="dimProcessada" style="font-size: 1.2em; color: #333; margin-top: 5px;">-</div>
+          </div>
+          <div class="metadata-item">
+            <div style="font-weight: bold; color: #666; font-size: 0.9em;">Valor Máximo</div>
+            <div id="valorMax" style="font-size: 1.2em; color: #333; margin-top: 5px;">-</div>
+          </div>
+          <div class="metadata-item">
+            <div style="font-weight: bold; color: #666; font-size: 0.9em;">Valor Mínimo</div>
+            <div id="valorMin" style="font-size: 1.2em; color: #333; margin-top: 5px;">-</div>
+          </div>
+          <div class="metadata-item">
+            <div style="font-weight: bold; color: #666; font-size: 0.9em;">Arquivo Salvo</div>
+            <div id="arquivoSalvo" style="font-size: 1.2em; color: #333; margin-top: 5px;">-</div>
+          </div>
         </div>
       </div>
     </div>
@@ -305,6 +320,13 @@
     async function enviarParaBackend(imagemBase64) {
       loader.style.display = 'block';
       showStatus('Processando imagem...', 'info');
+      
+      // Obter dimensões reais da imagem original
+      const imgOriginal = new Image();
+      imgOriginal.src = imagemBase64;
+      await new Promise(resolve => imgOriginal.onload = resolve);
+      const dimOriginalReal = [imgOriginal.height, imgOriginal.width];
+      
       try {
         const width = parseInt(document.getElementById('width').value);
         const height = parseInt(document.getElementById('height').value);
@@ -317,6 +339,8 @@
 
         const data = await response.json();
         if (response.ok) {
+          // Usar dimensões reais da imagem
+          data.dimensao_original_real = dimOriginalReal;
           mostrarResultados(imagemBase64, data);
           showStatus('✅ Foto processada com sucesso!', 'success');
         } else {
@@ -329,17 +353,25 @@
       }
     }
 
-    function mostrarResultados(imagemOriginal, dados) {
+    async function mostrarResultados(imagemOriginal, dados) {
+      // Carregar imagem processada para obter dimensões reais
+      const imgProcessada = new Image();
+      imgProcessada.src = 'data:image/png;base64,' + dados.imagem_processada_base64;
+      await new Promise(resolve => imgProcessada.onload = resolve);
+      
       document.getElementById('originalImage').src = imagemOriginal;
-      document.getElementById('processedImage').src = 'data:image/png;base64,' + dados.imagem_processada_base64;
-      document.getElementById('dimOriginal').textContent = `${dados.dimensao_original[0]} x ${dados.dimensao_original[1]}`;
-      document.getElementById('dimProcessada').textContent = `${dados.dimensao_processada[0]} x ${dados.dimensao_processada[1]}`;
+      document.getElementById('processedImage').src = imgProcessada.src;
+      
+      // Usar dimensões reais das imagens carregadas
+      const dimOrigReal = dados.dimensao_original_real || dados.dimensao_original;
+      document.getElementById('dimOriginal').textContent = `${dimOrigReal[0]} x ${dimOrigReal[1]} px`;
+      document.getElementById('dimProcessada').textContent = `${imgProcessada.height} x ${imgProcessada.width} px`;
       document.getElementById('valorMax').textContent = Number(dados.valor_max).toFixed(2);
       document.getElementById('valorMin').textContent = Number(dados.valor_min).toFixed(2);
 
       document.getElementById('arquivoSalvo').innerHTML =
         dados.arquivo_salvo_url
-          ? `<a href="${dados.arquivo_salvo_url}" target="_blank" rel="noopener">${dados.arquivo_salvo}</a>`
+          ? `<a href="${dados.arquivo_salvo_url}" target="_blank" rel="noopener" style="color: #667eea; text-decoration: none;">${dados.arquivo_salvo}</a>`
           : (dados.arquivo_salvo ?? '-');
 
       results.style.display = 'block';
