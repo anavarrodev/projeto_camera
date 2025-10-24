@@ -182,7 +182,7 @@
 <body>
   <div class="container">
     <h1>📸 Captura e Processamento de Imagens</h1>
-    <p class="subtitle">Sistema de captura com processamento padrão Colab (scikit-image)</p>
+    <p class="subtitle">Sistema de captura com processamento padrão Colab (scikit-image) + Supabase</p>
 
     <div class="camera-section">
       <video id="video" autoplay playsinline muted></video>
@@ -240,6 +240,10 @@
             <div style="font-weight: bold; color: #666; font-size: 0.9em;">Valor Mínimo</div>
             <div id="valorMin" style="font-size: 1.2em; color: #333; margin-top: 5px;">-</div>
           </div>
+          <div class="metadata-item">
+            <div style="font-weight: bold; color: #666; font-size: 0.9em;">Arquivo Salvo</div>
+            <div id="arquivoSalvo" style="font-size: 1.2em; color: #333; margin-top: 5px;">-</div>
+          </div>
         </div>
       </div>
     </div>
@@ -258,6 +262,11 @@
     const results = document.getElementById('results');
 
     let stream = null;
+
+    // URL do backend (Railway/localhost)
+    const API_URL = location.hostname.endsWith('github.io')
+      ? 'https://projetocamera-production.up.railway.app'
+      : 'http://localhost:8080';
 
     startBtn.addEventListener('click', iniciarCamera);
     captureBtn.addEventListener('click', capturarFoto);
@@ -301,185 +310,69 @@
       video.style.display = 'none';
       captureBtn.style.display = 'none';
 
-      await processarImagem(imagemBase64);
+      await enviarParaBackend(imagemBase64);
       captureBtn.disabled = false;
     }
 
-    // 🔧 PROCESSAMENTO PADRÃO COLAB (scikit-image)
-    async function processarImagem(imagemBase64) {
+    async function enviarParaBackend(imagemBase64) {
       loader.style.display = 'block';
-      showStatus('Processando imagem (padrão Colab)...', 'info');
-
+      showStatus('Processando imagem no backend (padrão Colab)...', 'info');
+      
+      // Obter dimensões reais da imagem original
+      const imgOriginal = new Image();
+      imgOriginal.src = imagemBase64;
+      await new Promise(resolve => imgOriginal.onload = resolve);
+      const dimOriginalReal = [imgOriginal.height, imgOriginal.width];
+      
       try {
-        // 1. Carregar imagem original
-        const imgOriginal = await carregarImagem(imagemBase64);
-        const dimOriginal = [imgOriginal.height, imgOriginal.width];
-
-        // 2. Converter para escala de cinza
-        const imagemCinza = converterParaCinza(imgOriginal);
-
-        // 3. Obter tamanho alvo
         const width = parseInt(document.getElementById('width').value);
         const height = parseInt(document.getElementById('height').value);
-        const novoTamanho = [height, width];
 
-        // 4. Redimensionar com anti-aliasing (simula transform.resize do scikit-image)
-        const imagemRedimensionada = redimensionarComAntiAliasing(imagemCinza, novoTamanho);
-
-        // 5. Normalizar [0, 1] (divide pelo máximo)
-        const { imagemNormalizada, valorMax, valorMin } = normalizarImagem(imagemRedimensionada);
-
-        // 6. Converter para exibição (PNG base64)
-        const imagemProcessadaBase64 = arrayParaImagemBase64(imagemNormalizada, novoTamanho);
-
-        // 7. Exibir resultados
-        mostrarResultados(imagemBase64, {
-          imagem_processada_base64: imagemProcessadaBase64,
-          dimensao_original: dimOriginal,
-          dimensao_processada: novoTamanho,
-          valor_max: valorMax,
-          valor_min: valorMin
+        const response = await fetch(`${API_URL}/api/processar-foto`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            imagem: imagemBase64, 
+            tamanho: [height, width] 
+          })
         });
 
-        showStatus('✅ Foto processada com sucesso (padrão Colab)!', 'success');
+        const data = await response.json();
+        if (response.ok) {
+          // Usar dimensões reais da imagem
+          data.dimensao_original_real = dimOriginalReal;
+          mostrarResultados(imagemBase64, data);
+          showStatus('✅ Foto processada e salva no Supabase!', 'success');
+        } else {
+          showStatus('Erro: ' + (data.erro || 'Falha no processamento'), 'error');
+        }
       } catch (error) {
-        showStatus('Erro no processamento: ' + error.message, 'error');
-        console.error(error);
+        showStatus('Erro ao conectar com o backend: ' + (error.message || error), 'error');
       } finally {
         loader.style.display = 'none';
       }
     }
 
-    // === FUNÇÕES DE PROCESSAMENTO (PADRÃO COLAB) ===
-    
-    function carregarImagem(base64) {
-      return new Promise((resolve, reject) => {
-        const img = new Image();
-        img.onload = () => resolve(img);
-        img.onerror = reject;
-        img.src = base64;
-      });
-    }
-
-    function converterParaCinza(img) {
-      const tempCanvas = document.createElement('canvas');
-      tempCanvas.width = img.width;
-      tempCanvas.height = img.height;
-      const tempCtx = tempCanvas.getContext('2d');
-      tempCtx.drawImage(img, 0, 0);
-      
-      const imageData = tempCtx.getImageData(0, 0, img.width, img.height);
-      const pixels = imageData.data;
-      const cinza = new Float32Array(img.width * img.height);
-
-      for (let i = 0; i < pixels.length; i += 4) {
-        const r = pixels[i];
-        const g = pixels[i + 1];
-        const b = pixels[i + 2];
-        // Conversão para escala de cinza (luminosidade)
-        cinza[i / 4] = (0.299 * r + 0.587 * g + 0.114 * b) / 255.0;
-      }
-
-      return { data: cinza, width: img.width, height: img.height };
-    }
-
-    function redimensionarComAntiAliasing(imagemCinza, novoTamanho) {
-      const [novaAltura, novaLargura] = novoTamanho;
-      const { data: srcData, width: srcWidth, height: srcHeight } = imagemCinza;
-
-      const resized = new Float32Array(novaAltura * novaLargura);
-      const scaleX = srcWidth / novaLargura;
-      const scaleY = srcHeight / novaAltura;
-
-      // Interpolação bilinear com anti-aliasing
-      for (let y = 0; y < novaAltura; y++) {
-        for (let x = 0; x < novaLargura; x++) {
-          const srcX = x * scaleX;
-          const srcY = y * scaleY;
-          
-          const x1 = Math.floor(srcX);
-          const y1 = Math.floor(srcY);
-          const x2 = Math.min(x1 + 1, srcWidth - 1);
-          const y2 = Math.min(y1 + 1, srcHeight - 1);
-
-          const dx = srcX - x1;
-          const dy = srcY - y1;
-
-          const p1 = srcData[y1 * srcWidth + x1];
-          const p2 = srcData[y1 * srcWidth + x2];
-          const p3 = srcData[y2 * srcWidth + x1];
-          const p4 = srcData[y2 * srcWidth + x2];
-
-          const valor = p1 * (1 - dx) * (1 - dy) +
-                       p2 * dx * (1 - dy) +
-                       p3 * (1 - dx) * dy +
-                       p4 * dx * dy;
-
-          resized[y * novaLargura + x] = valor;
-        }
-      }
-
-      return { data: resized, width: novaLargura, height: novaAltura };
-    }
-
-    function normalizarImagem(imagem) {
-      const { data } = imagem;
-      let max = -Infinity;
-      let min = Infinity;
-
-      // Encontrar min/max
-      for (let i = 0; i < data.length; i++) {
-        if (data[i] > max) max = data[i];
-        if (data[i] < min) min = data[i];
-      }
-
-      // Normalizar [0, 1] dividindo pelo máximo
-      const normalizada = new Float32Array(data.length);
-      for (let i = 0; i < data.length; i++) {
-        normalizada[i] = max > 0 ? data[i] / max : 0;
-      }
-
-      return {
-        imagemNormalizada: { ...imagem, data: normalizada },
-        valorMax: max,
-        valorMin: min
-      };
-    }
-
-    function arrayParaImagemBase64(imagem, tamanho) {
-      const [altura, largura] = tamanho;
-      const tempCanvas = document.createElement('canvas');
-      tempCanvas.width = largura;
-      tempCanvas.height = altura;
-      const tempCtx = tempCanvas.getContext('2d');
-      
-      const imageData = tempCtx.createImageData(largura, altura);
-      const pixels = imageData.data;
-
-      for (let i = 0; i < imagem.data.length; i++) {
-        const valor = Math.round(imagem.data[i] * 255);
-        pixels[i * 4] = valor;     // R
-        pixels[i * 4 + 1] = valor; // G
-        pixels[i * 4 + 2] = valor; // B
-        pixels[i * 4 + 3] = 255;   // A
-      }
-
-      tempCtx.putImageData(imageData, 0, 0);
-      return tempCanvas.toDataURL('image/png').split(',')[1];
-    }
-
     async function mostrarResultados(imagemOriginal, dados) {
+      // Carregar imagem processada para obter dimensões reais
+      const imgProcessada = new Image();
+      imgProcessada.src = 'data:image/png;base64,' + dados.imagem_processada_base64;
+      await new Promise(resolve => imgProcessada.onload = resolve);
+      
       document.getElementById('originalImage').src = imagemOriginal;
-      document.getElementById('processedImage').src = 'data:image/png;base64,' + dados.imagem_processada_base64;
+      document.getElementById('processedImage').src = imgProcessada.src;
       
-      const [h, w] = dados.dimensao_original;
-      document.getElementById('dimOriginal').textContent = `${h} x ${w} px`;
-      
-      const [hp, wp] = dados.dimensao_processada;
-      document.getElementById('dimProcessada').textContent = `${hp} x ${wp} px`;
-      
-      document.getElementById('valorMax').textContent = Number(dados.valor_max).toFixed(4);
-      document.getElementById('valorMin').textContent = Number(dados.valor_min).toFixed(4);
+      // Usar dimensões reais das imagens carregadas
+      const dimOrigReal = dados.dimensao_original_real || dados.dimensao_original;
+      document.getElementById('dimOriginal').textContent = `${dimOrigReal[0]} x ${dimOrigReal[1]} px`;
+      document.getElementById('dimProcessada').textContent = `${imgProcessada.height} x ${imgProcessada.width} px`;
+      document.getElementById('valorMax').textContent = Number(dados.valor_max).toFixed(2);
+      document.getElementById('valorMin').textContent = Number(dados.valor_min).toFixed(2);
+
+      document.getElementById('arquivoSalvo').innerHTML =
+        dados.arquivo_salvo_url
+          ? `<a href="${dados.arquivo_salvo_url}" target="_blank" rel="noopener" style="color: #667eea; text-decoration: none;">${dados.arquivo_salvo}</a>`
+          : (dados.arquivo_salvo ?? '-');
 
       results.style.display = 'block';
       restartBtn.style.display = 'inline-block';
