@@ -8,11 +8,12 @@ import cv2
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from supabase import create_client
+from skimage import transform, color
 
 # ========= Config =========
 ALLOWED_ORIGIN        = os.getenv("ALLOWED_ORIGIN", "*")
 SUPABASE_URL          = os.getenv("SUPABASE_URL")
-SUPABASE_SERVICE_KEY  = os.getenv("SUPABASE_SERVICE_KEY")   # use SEMPRE no backend
+SUPABASE_SERVICE_KEY  = os.getenv("SUPABASE_SERVICE_KEY")
 SUPABASE_BUCKET       = os.getenv("SUPABASE_BUCKET", "photos")
 
 if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
@@ -51,19 +52,55 @@ def processar_foto():
         except Exception:
             return jsonify({"erro": "Formato de imagem inválido (esperado dataURL)"}), 400
 
+        # ===== PROCESSAMENTO SEGUINDO O CÓDIGO ORIGINAL =====
+        
+        # 1. Decodificar imagem
         arr = np.frombuffer(base64.b64decode(b64), np.uint8)
-        img = cv2.imdecode(arr, cv2.IMREAD_GRAYSCALE)
-        if img is None:
+        img_bgr = cv2.imdecode(arr, cv2.IMREAD_COLOR)
+        if img_bgr is None:
             return jsonify({"erro": "Falha ao decodificar imagem"}), 400
-
-        # Redimensiona
-        h, w = map(int, data["tamanho"])  # [height, width]
-        proc = cv2.resize(img, (w, h))
-
-        vmin, vmax = float(proc.min()), float(proc.max())
-
-        # Codifica PNG em memória (bytes)
-        ok, buf = cv2.imencode(".png", proc)
+        
+        # 2. Converter BGR -> RGB
+        img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
+        
+        # 3. Converter para escala de cinza (imagem_original do código)
+        if len(img_rgb.shape) == 3:
+            imagem_original = color.rgb2gray(img_rgb)
+        else:
+            imagem_original = img_rgb
+        
+        print(f"Dimensão Original: {imagem_original.shape}")
+        
+        # 4. Definição do tamanho alvo
+        h, w = map(int, data["tamanho"])  # ex: [64, 64]
+        novo_tamanho = (h, w)
+        
+        # 5. Redimensionamento da imagem
+        # Usamos 'anti_aliasing=True' para uma suavização melhor
+        imagem_redimensionada = transform.resize(
+            imagem_original, 
+            novo_tamanho, 
+            anti_aliasing=True
+        )
+        
+        # 6. Normalização
+        # O 'transform.resize' já normaliza automaticamente para [0,1] se a entrada for uint8/uint16.
+        # Para garantir, podemos fazer explicitamente:
+        imagem_normalizada = imagem_redimensionada / imagem_redimensionada.max()
+        
+        print(f"Dimensão Processada: {imagem_normalizada.shape}")
+        print(f"Valor Máximo (Processada): {imagem_normalizada.max():.2f}")
+        
+        # ===== FIM DO PROCESSAMENTO =====
+        
+        # 7. Metadados
+        vmin, vmax = float(imagem_normalizada.min()), float(imagem_normalizada.max())
+        
+        # 8. Converter para uint8 para salvar PNG (0..255)
+        proc_u8 = (np.clip(imagem_normalizada, 0.0, 1.0) * 255.0).astype(np.uint8)
+        
+        # 9. Codifica PNG em memória (bytes)
+        ok, buf = cv2.imencode(".png", proc_u8, [cv2.IMWRITE_PNG_COMPRESSION, 3])
         if not ok:
             return jsonify({"erro": "Falha ao codificar PNG"}), 500
         png_bytes: bytes = buf.tobytes()
@@ -71,10 +108,9 @@ def processar_foto():
         # Para exibir a imagem processada no front
         b64_proc = base64.b64encode(png_bytes).decode("utf-8")
 
-        # ===== Upload no Supabase Storage (USAR BYTES, não BytesIO) =====
+        # ===== Upload no Supabase Storage =====
         path = _unique_path()
         try:
-            # supabase-py v2 espera bytes (ou caminho de arquivo). Nada de BytesIO aqui.
             resp = supabase.storage.from_(SUPABASE_BUCKET).upload(
                 path=path,
                 file=png_bytes,
@@ -88,13 +124,9 @@ def processar_foto():
         # Bucket público: URL pública
         public_url = supabase.storage.from_(SUPABASE_BUCKET).get_public_url(path)
 
-        # Se o bucket for PRIVADO, use signed URL (descomente):
-        # signed = supabase.storage.from_(SUPABASE_BUCKET).create_signed_url(path, 3600)  # 1h
-        # public_url = signed.get("signedURL") if isinstance(signed, dict) else public_url
-
         return jsonify({
-            "dimensao_original": [int(img.shape[0]), int(img.shape[1])],
-            "dimensao_processada": [int(proc.shape[0]), int(proc.shape[1])],
+            "dimensao_original": [int(imagem_original.shape[0]), int(imagem_original.shape[1])],
+            "dimensao_processada": [int(imagem_normalizada.shape[0]), int(imagem_normalizada.shape[1])],
             "valor_min": vmin,
             "valor_max": vmax,
             "arquivo_salvo": path,
@@ -104,6 +136,8 @@ def processar_foto():
 
     except Exception as e:
         print("API ERROR:", e, flush=True)
+        import traceback
+        traceback.print_exc()
         return jsonify({"erro": str(e)}), 500
 
 
