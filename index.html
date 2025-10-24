@@ -73,7 +73,8 @@
         </div>
         <div class="image-box">
           <h3>✨ Imagem Processada</h3>
-          <img id="processedImage" src="" alt="Processada" />
+          <!-- ✅ Estilo aplicado aqui -->
+          <img id="processedImage" src="" alt="Processada" style="width:256px; image-rendering: pixelated;" />
         </div>
       </div>
 
@@ -104,9 +105,8 @@
 
     let stream = null;
 
-    // usa Render em produção (Pages) e localhost no dev
     const API_URL = location.hostname.endsWith('github.io')
-      ? 'https://projeto-camera.onrender.com'   // troque pela sua URL do Render
+      ? 'https://projeto-camera.onrender.com'
       : 'http://localhost:8080';
 
     startBtn.addEventListener('click', iniciarCamera);
@@ -190,7 +190,6 @@
       document.getElementById('valorMax').textContent = Number(dados.valor_max).toFixed(2);
       document.getElementById('valorMin').textContent = Number(dados.valor_min).toFixed(2);
 
-      // Link clicável para o arquivo no Supabase
       document.getElementById('arquivoSalvo').innerHTML =
         dados.arquivo_salvo_url
           ? `<a href="${dados.arquivo_salvo_url}" target="_blank" rel="noopener">${dados.arquivo_salvo}</a>`
