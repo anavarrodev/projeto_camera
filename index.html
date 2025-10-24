@@ -335,7 +335,9 @@
         const results = document.getElementById('results');
         
         let stream = null;
-        const API_URL = 'http://localhost:8080';
+        const API_URL = location.hostname.endsWith('github.io');  
+            ? 'https://projeto-camera.onrender.com'   // <- coloque a URL do Render aqui
+            : 'http://localhost:8080';
 
         startBtn.addEventListener('click', iniciarCamera);
         captureBtn.addEventListener('click', capturarFoto);
