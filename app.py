@@ -39,10 +39,11 @@ def log_response(response):
     print(f"{'='*50}\n", flush=True)
     return response
 
-def _unique_path() -> str:
+def _unique_path(suffix: str = "normalizada") -> str:
     """Gera caminho único por data/UUID para o arquivo no bucket."""
     today = dt.datetime.utcnow().strftime("%Y/%m/%d")
-    return f"{today}/{uuid.uuid4().hex}.png"
+    unique_id = uuid.uuid4().hex
+    return f"{today}/{unique_id}_{suffix}.png"
 
 # ======= Rotas de saúde/diagnóstico =======
 @app.get("/")
@@ -56,7 +57,7 @@ def health():
 # ============== API principal ==============
 @app.post("/api/processar-foto")
 def processar_foto():
-    print("🔄 Iniciando processamento...", flush=True)
+    print("📄 Iniciando processamento...", flush=True)
     
     try:
         # Verifica Content-Type
@@ -73,7 +74,9 @@ def processar_foto():
             print(f"❌ Campos faltando. Recebido: {list(data.keys())}", flush=True)
             return jsonify({"erro": "Payload inválido - faltam 'imagem' e/ou 'tamanho'"}), 400
 
+        salvar_original = data.get("salvar_original", True)
         print(f"✅ Payload válido. Tamanho solicitado: {data['tamanho']}", flush=True)
+        print(f"📌 Salvar original: {salvar_original}", flush=True)
 
         # ---- 1) Decodificação (dataURL -> np.uint8) ----
         try:
@@ -91,13 +94,45 @@ def processar_foto():
         img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
         print(f"✅ Imagem decodificada: {img_rgb.shape}", flush=True)
 
-        # ---- 2) Converte para grayscale float [0,1] ----
+        # ---- 2) Salvar imagem ORIGINAL no Supabase (se solicitado) ----
+        arquivo_original = None
+        arquivo_original_url = None
+        
+        if salvar_original:
+            print("📸 Salvando imagem original...", flush=True)
+            
+            # Converte RGB de volta para BGR para salvar como JPEG
+            img_bgr_original = cv2.cvtColor(img_rgb, cv2.COLOR_RGB2BGR)
+            ok_jpg, buf_jpg = cv2.imencode(".jpg", img_bgr_original, [cv2.IMWRITE_JPEG_QUALITY, 90])
+            
+            if not ok_jpg:
+                print("❌ Falha ao codificar JPEG original", flush=True)
+            else:
+                jpg_bytes = buf_jpg.tobytes()
+                path_original = _unique_path("original").replace(".png", ".jpg")
+                
+                try:
+                    resp_orig = supabase.storage.from_(SUPABASE_BUCKET).upload(
+                        path=path_original,
+                        file=jpg_bytes,
+                        file_options={"contentType": "image/jpeg", "upsert": "true"}
+                    )
+                    print(f"✅ Upload original concluído: {resp_orig}", flush=True)
+                    
+                    arquivo_original = path_original
+                    arquivo_original_url = supabase.storage.from_(SUPABASE_BUCKET).get_public_url(path_original)
+                    print(f"✅ URL original: {arquivo_original_url}", flush=True)
+                    
+                except Exception as up_err:
+                    print(f"⚠️ Erro no upload da imagem original: {up_err}", flush=True)
+
+        # ---- 3) Converte para grayscale float [0,1] ----
         if img_rgb.ndim == 3:
             img_gray_f = skcolor.rgb2gray(img_rgb)
         else:
             img_gray_f = skut.img_as_float(img_rgb)
 
-        # ---- 3) Redimensiona com anti_aliasing ----
+        # ---- 4) Redimensiona com anti_aliasing ----
         h, w = map(int, data["tamanho"])
         proc_f = sktf.resize(
             img_gray_f,
@@ -107,7 +142,7 @@ def processar_foto():
         )
         print(f"✅ Imagem redimensionada: {proc_f.shape}", flush=True)
 
-        # ---- 4) Normaliza explicitamente para [0,1] ----
+        # ---- 5) Normaliza explicitamente para [0,1] ----
         maxv = float(proc_f.max())
         if maxv > 0:
             proc_f = proc_f / maxv
@@ -115,10 +150,10 @@ def processar_foto():
         vmin, vmax = float(proc_f.min()), float(proc_f.max())
         print(f"✅ Normalizada - min: {vmin:.4f}, max: {vmax:.4f}", flush=True)
 
-        # ---- 5) Converte para uint8 p/ salvar PNG ----
+        # ---- 6) Converte para uint8 p/ salvar PNG ----
         proc_u8 = (np.clip(proc_f, 0.0, 1.0) * 255.0).round().astype(np.uint8)
 
-        # ---- 6) Codifica PNG (bytes) ----
+        # ---- 7) Codifica PNG (bytes) ----
         ok, buf = cv2.imencode(".png", proc_u8, [cv2.IMWRITE_PNG_COMPRESSION, 3])
         if not ok:
             print("❌ Falha ao codificar PNG", flush=True)
@@ -127,31 +162,33 @@ def processar_foto():
         b64_proc = base64.b64encode(png_bytes).decode("utf-8")
         print(f"✅ PNG codificado: {len(png_bytes)} bytes", flush=True)
 
-        # ---- 7) Upload no Supabase Storage ----
-        path = _unique_path()
-        print(f"🔄 Fazendo upload para: {path}", flush=True)
+        # ---- 8) Upload da imagem NORMALIZADA no Supabase Storage ----
+        path_normalizada = _unique_path("normalizada")
+        print(f"📄 Fazendo upload da imagem normalizada para: {path_normalizada}", flush=True)
         
         try:
             resp = supabase.storage.from_(SUPABASE_BUCKET).upload(
-                path=path,
+                path=path_normalizada,
                 file=png_bytes,
                 file_options={"contentType": "image/png", "upsert": "true"}
             )
-            print(f"✅ Upload concluído: {resp}", flush=True)
+            print(f"✅ Upload normalizada concluído: {resp}", flush=True)
         except Exception as up_err:
-            print(f"❌ Erro no upload: {up_err}", flush=True)
+            print(f"❌ Erro no upload da normalizada: {up_err}", flush=True)
             return jsonify({"erro": f"Falha no upload Supabase: {up_err}"}), 500
 
-        public_url = supabase.storage.from_(SUPABASE_BUCKET).get_public_url(path)
-        print(f"✅ URL pública: {public_url}", flush=True)
+        public_url_normalizada = supabase.storage.from_(SUPABASE_BUCKET).get_public_url(path_normalizada)
+        print(f"✅ URL normalizada: {public_url_normalizada}", flush=True)
 
         resultado = {
             "dimensao_original": [int(img_rgb.shape[0]), int(img_rgb.shape[1])],
             "dimensao_processada": [h, w],
             "valor_min": vmin,
             "valor_max": vmax,
-            "arquivo_salvo": path,
-            "arquivo_salvo_url": public_url,
+            "arquivo_salvo": path_normalizada,
+            "arquivo_salvo_url": public_url_normalizada,
+            "arquivo_original": arquivo_original,
+            "arquivo_original_url": arquivo_original_url,
             "imagem_processada_base64": b64_proc
         }
         
@@ -169,7 +206,7 @@ if __name__ == "__main__":
     port = int(os.getenv("PORT", 8080))
     print(f"\n{'='*50}")
     print(f"🚀 Iniciando servidor na porta {port}")
-    print(f"📍 Endpoints disponíveis:")
+    print(f"📋 Endpoints disponíveis:")
     print(f"   GET  http://localhost:{port}/")
     print(f"   GET  http://localhost:{port}/health")
     print(f"   POST http://localhost:{port}/api/processar-foto")
