@@ -63,7 +63,10 @@
       border-radius: 10px;
       cursor: pointer;
       box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
+      transition: transform 0.2s;
     }
+    button:hover { transform: translateY(-2px); }
+    button:disabled { opacity: 0.6; cursor: not-allowed; }
     #startBtn { background: linear-gradient(135deg, #667eea, #764ba2); color: #fff; }
     #captureBtn { background: linear-gradient(135deg, #f093fb, #f5576c); color: #fff; display: none; }
     #restartBtn { background: linear-gradient(135deg, #43cea2, #185a9d); color: #fff; display: none; }
@@ -241,7 +244,11 @@
             <div id="valorMin" style="font-size: 1.2em; color: #333; margin-top: 5px;">-</div>
           </div>
           <div class="metadata-item">
-            <div style="font-weight: bold; color: #666; font-size: 0.9em;">Arquivo Salvo</div>
+            <div style="font-weight: bold; color: #666; font-size: 0.9em;">📷 Imagem Original</div>
+            <div id="arquivoOriginal" style="font-size: 1.2em; color: #333; margin-top: 5px;">-</div>
+          </div>
+          <div class="metadata-item">
+            <div style="font-weight: bold; color: #666; font-size: 0.9em;">✨ Imagem Normalizada</div>
             <div id="arquivoSalvo" style="font-size: 1.2em; color: #333; margin-top: 5px;">-</div>
           </div>
         </div>
@@ -333,7 +340,8 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
             imagem: imagemBase64, 
-            tamanho: [height, width] 
+            tamanho: [height, width],
+            salvar_original: true  // Flag para salvar também a imagem original
           })
         });
 
@@ -342,7 +350,7 @@
           // Usar dimensões reais da imagem
           data.dimensao_original_real = dimOriginalReal;
           mostrarResultados(imagemBase64, data);
-          showStatus('✅ Foto processada e salva no Supabase!', 'success');
+          showStatus('✅ Foto original e normalizada salvas no Supabase!', 'success');
         } else {
           showStatus('Erro: ' + (data.erro || 'Falha no processamento'), 'error');
         }
@@ -369,6 +377,13 @@
       document.getElementById('valorMax').textContent = Number(dados.valor_max).toFixed(2);
       document.getElementById('valorMin').textContent = Number(dados.valor_min).toFixed(2);
 
+      // Exibir link da imagem original salva no Supabase
+      document.getElementById('arquivoOriginal').innerHTML =
+        dados.arquivo_original_url
+          ? `<a href="${dados.arquivo_original_url}" target="_blank" rel="noopener" style="color: #667eea; text-decoration: none;">${dados.arquivo_original}</a>`
+          : (dados.arquivo_original ?? '❌ Não salva');
+
+      // Exibir link da imagem normalizada
       document.getElementById('arquivoSalvo').innerHTML =
         dados.arquivo_salvo_url
           ? `<a href="${dados.arquivo_salvo_url}" target="_blank" rel="noopener" style="color: #667eea; text-decoration: none;">${dados.arquivo_salvo}</a>`
